@@ -1,14 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { exportFile } from 'quasar';
+import { ref, onMounted, computed } from 'vue';
+import { exportFile, Notify, Dialog, uid } from 'quasar';
 
-import { customers } from '../data/data'
+import { useCustomersStore } from '@/stores/customers';
+import { reactive } from 'vue';
 
-const customersData = ref();
+const customersStore = useCustomersStore();
 
-customersData.value = customers
-
-const rows = customersData;
 const filter = ref('');
 
 const columns = [
@@ -21,13 +19,18 @@ const columns = [
     format: val => `${val}`,
     sortable: true,
   },
-  { name: 'gender', label: 'Gender', align: 'left', field: 'gender' },
   { name: 'email', align: 'center', label: 'Email', align: 'left', field: 'email', sortable: true },
   { name: 'address', label: 'Address', field: 'address', align: 'left', sortable: true },
   { name: 'phone', label: 'Phone', field: 'phone', align: 'left', },
   { name: 'country', label: 'Country', field: 'country', align: 'left', sortable: true },
+  { name: 'actions', label: 'Actions', align: 'left', }
 ]
 
+
+const customers = computed(() => {
+  return customersStore.customersData
+})
+const rows = customers.value;
 
 
 function wrapCsvValue(val, formatFn, row) {
@@ -85,7 +88,115 @@ const pagination = ref({
   // rowsNumber: xx if getting data from a server
 })
 
+const createCustomerForm = ref(false);
+const updateCustomerForm = ref(false);
 
+const formData = reactive({
+  name: '',
+  email: '',
+  address: '',
+  phone: '',
+  county: '',
+})
+
+function createCustomer() {
+  customersStore.createCustomer({
+    id: uid(),
+    name: formData.name,
+    email: formData.email,
+    address: formData.address,
+    phone: formData.phone,
+    country: formData.country,
+  })
+
+  onReset()
+  createCustomerForm.value = false
+
+  Notify.create({
+    message: 'Customer Added Successfully',
+    type: "positive",
+    actions: [
+      { icon: 'close', color: 'white', round: true, }
+    ]
+  })
+};
+
+function onReset() {
+  formData.name = ''
+  formData.email = ''
+  formData.address = ''
+  formData.phone = ''
+  formData.country = ''
+}
+
+const testId = ref()
+
+function update(id) {
+  updateCustomerForm.value = true;
+  const customerToUpdate = JSON.parse(JSON.stringify(
+    customersStore.customersData.find((item) => item.id === id)
+  ))
+  testId.value = customerToUpdate.id
+  formData.name = customerToUpdate.name
+  formData.email = customerToUpdate.email
+  formData.address = customerToUpdate.address
+  formData.phone = customerToUpdate.phone
+  formData.country = customerToUpdate.country
+}
+
+function updateCustomer() {
+  try {
+    customersStore.updateCustomer(testId.value, formData);
+    onReset();
+    updateCustomerForm.value = false;
+    Notify.create({
+      message: 'Customer Updated Successfully',
+      type: "positive",
+      actions: [
+        { icon: 'close', color: 'white', round: true, }
+      ]
+    })
+  } catch (error) {
+    Notify.create({
+      message: error.message,
+      type: "negative",
+      actions: [
+        { icon: 'close', color: 'white', round: true, }
+      ]
+    })
+  }
+};
+
+function confirm(id) {
+  const customerToDelete = customersStore.customersData.find((item) => item.id === id)
+  Dialog.create({
+    dark: true,
+    title: 'Confirm',
+    color: 'primary',
+    message: `Are you sure you want to delete ${customerToDelete.name} ?`,
+    cancel: true,
+    persistent: true
+  }).onOk(() => {
+    try {
+      customersStore.deleteCustomer(id);
+      Notify.create({
+        message: `Customer ${customerToDelete.name} Deleted Successfully`,
+        type: "positive",
+        actions: [
+          { icon: 'close', color: 'white', round: true, }
+        ]
+      })
+    } catch (error) {
+      Notify.create({
+        message: error.message,
+        type: "negative",
+        actions: [
+          { icon: 'close', color: 'white', round: true, }
+        ]
+      })
+    }
+  })
+};
 
 </script>
 
@@ -97,7 +208,7 @@ const pagination = ref({
         no-data-label="No data found">
 
         <template v-slot:top-left="props">
-          <q-btn color="primary" label="Add row" />
+          <q-btn color="primary" label="Add Customer" @click="createCustomerForm = true" />
           <q-btn color="primary" icon-right="archive" label="Export to csv" no-caps @click="exportTable" />
           <q-btn flat round dense :icon="props.inFullscreen ? 'fullscreen_exit' : 'fullscreen'"
             @click="props.toggleFullscreen" class="q-ml-md" />
@@ -145,9 +256,85 @@ const pagination = ref({
                 <q-input v-model="scope.value" dense autofocus hint="Use buttons to close" />
               </q-popup-edit>
             </q-td>
+
+            <q-td key="actions" :props="props">
+              <q-btn round color="info" icon="edit" @click="update(props.row.id)" />
+              <q-btn round color="negative" icon="delete" @click="confirm(props.row.id)" />
+            </q-td>
           </q-tr>
         </template>
       </q-table>
     </div>
+
+    <q-dialog v-model="createCustomerForm">
+      <q-card flat bordered class="form-card">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Update Customer</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+
+        <q-card-section>
+          <q-form @submit="createCustomer" @reset="onReset" class="q-gutter-md">
+            <q-input filled v-model="formData.name" label="Customer Name *" hint="Customer Name" lazy-rules
+              :rules="[val => val && val.length > 0 || 'Please type something']" />
+
+            <q-input filled type="email" v-model="formData.email" label="Customer Email *" hint="Customer Email"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+
+            <q-input filled type="textarea" v-model="formData.address" label="Customer Address *" hint="Customer Address"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="number" v-model="formData.phone" label="Customer Phone *" hint="Customer Phone"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled v-model="formData.country" label="Customer Country *" hint="Customer Country" lazy-rules
+              :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <div>
+              <q-btn label="Submit" type="submit" color="primary" />
+              <q-btn label="Reset" type="reset" color="primary" flat class="q-ml-sm" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="updateCustomerForm">
+      <q-card flat bordered class="form-card">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Update Customer</div>
+          <q-space />
+          <q-btn icon="close" flat round dense @click="updateCustomerForm = false" />
+        </q-card-section>
+
+
+        <q-card-section>
+          <q-form @submit="updateCustomer(id)" @reset="onReset" class="q-gutter-md">
+            <q-input filled v-model="formData.name" label="Customer Name *" hint="Customer Name" lazy-rules
+              :rules="[val => val && val.length > 0 || 'Please type something']" />
+
+            <q-input filled type="email" v-model="formData.email" label="Customer Email *" hint="Customer Email"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+
+            <q-input filled type="textarea" v-model="formData.address" label="Customer Address *" hint="Customer Address"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="number" v-model="formData.phone" label="Customer Phone *" hint="Customer Phone"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled v-model="formData.country" label="Customer Country *" hint="Customer Country" lazy-rules
+              :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <div>
+              <q-btn label="Submit" type="submit" color="primary" />
+              <q-btn label="Reset" type="reset" color="primary" flat class="q-ml-sm" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
+
+
+<style lang="sass">
+.form-card
+  width: 100%
+  max-width: 400px
+</style>

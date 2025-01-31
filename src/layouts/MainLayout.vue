@@ -14,9 +14,9 @@
             </q-toolbar>
 
             <q-tabs align="left">
-                <q-route-tab to="/page1" label="Page One" />
-                <q-route-tab to="/page2" label="Page Two" />
-                <q-route-tab to="/page3" label="Page Three" />
+                <q-route-tab to="/" label="Home" />
+                <q-route-tab to="/about" label="About" />
+                <q-route-tab @click="toggleTheme" label="Toggle Theme" />
             </q-tabs>
         </q-header>
 
@@ -32,6 +32,7 @@
 </template>
   
 <script>
+import { Dark } from 'quasar'
 import { ref } from 'vue'
 
 export default {
@@ -42,6 +43,9 @@ export default {
             leftDrawerOpen,
             toggleLeftDrawer() {
                 leftDrawerOpen.value = !leftDrawerOpen.value
+            },
+            toggleTheme() {
+                Dark.toggle()
             }
         }
     }
