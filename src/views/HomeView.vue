@@ -91,7 +91,7 @@ const pagination = ref({
 const createCustomerForm = ref(false);
 const updateCustomerForm = ref(false);
 
-const formData = reactive({
+const addCustomerFormData = reactive({
   name: '',
   email: '',
   address: '',
@@ -99,14 +99,24 @@ const formData = reactive({
   county: '',
 })
 
+const updateCustomerFormData = reactive({
+  name: '',
+  email: '',
+  address: '',
+  phone: '',
+  county: '',
+})
+
+
+
 function createCustomer() {
   customersStore.createCustomer({
     id: uid(),
-    name: formData.name,
-    email: formData.email,
-    address: formData.address,
-    phone: formData.phone,
-    country: formData.country,
+    name: addCustomerFormData.name,
+    email: addCustomerFormData.email,
+    address: addCustomerFormData.address,
+    phone: addCustomerFormData.phone,
+    country: addCustomerFormData.country,
   })
 
   onReset()
@@ -122,11 +132,11 @@ function createCustomer() {
 };
 
 function onReset() {
-  formData.name = ''
-  formData.email = ''
-  formData.address = ''
-  formData.phone = ''
-  formData.country = ''
+  addCustomerFormData.name = ''
+  addCustomerFormData.email = ''
+  addCustomerFormData.address = ''
+  addCustomerFormData.phone = ''
+  addCustomerFormData.country = ''
 }
 
 const testId = ref()
@@ -137,16 +147,16 @@ function update(id) {
     customersStore.customersData.find((item) => item.id === id)
   ))
   testId.value = customerToUpdate.id
-  formData.name = customerToUpdate.name
-  formData.email = customerToUpdate.email
-  formData.address = customerToUpdate.address
-  formData.phone = customerToUpdate.phone
-  formData.country = customerToUpdate.country
+  updateCustomerFormData.name = customerToUpdate.name
+  updateCustomerFormData.email = customerToUpdate.email
+  updateCustomerFormData.address = customerToUpdate.address
+  updateCustomerFormData.phone = customerToUpdate.phone
+  updateCustomerFormData.country = customerToUpdate.country
 }
 
 function updateCustomer() {
   try {
-    customersStore.updateCustomer(testId.value, formData);
+    customersStore.updateCustomer(testId.value, updateCustomerFormData);
     onReset();
     updateCustomerForm.value = false;
     Notify.create({
@@ -263,6 +273,24 @@ function confirm(id) {
             </q-td>
           </q-tr>
         </template>
+        <template v-slot:item="props">
+          <q-card class="q-ma-xs">
+            <q-list dense>
+              <q-item :key="columns.name" v-if="columns.field !== 'action'" v-for="col in props.cols">
+                <q-item-section>
+                  <q-item-label>{{ col.label }}</q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-item-label caption>{{ col.value }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <q-card-section>
+              <q-btn dense flat round color="blue" field="edit" icon="edit" @click="update(props.row.id)"></q-btn>
+              <q-btn round color="negative" icon="delete" @click="confirm(props.row.id)" />
+            </q-card-section>
+          </q-card>
+        </template>
       </q-table>
     </div>
 
@@ -277,18 +305,18 @@ function confirm(id) {
 
         <q-card-section>
           <q-form @submit="createCustomer" @reset="onReset" class="q-gutter-md">
-            <q-input filled v-model="formData.name" label="Customer Name *" hint="Customer Name" lazy-rules
+            <q-input filled v-model="addCustomerFormData.name" label="Customer Name *" hint="Customer Name" lazy-rules
               :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="email" v-model="formData.email" label="Customer Email *" hint="Customer Email"
-              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="email" v-model="addCustomerFormData.email" label="Customer Email *"
+              hint="Customer Email" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="textarea" v-model="formData.address" label="Customer Address *" hint="Customer Address"
+            <q-input filled type="textarea" v-model="addCustomerFormData.address" label="Customer Address *"
+              hint="Customer Address" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="number" v-model="addCustomerFormData.phone" label="Customer Phone *"
+              hint="Customer Phone" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled v-model="addCustomerFormData.country" label="Customer Country *" hint="Customer Country"
               lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled type="number" v-model="formData.phone" label="Customer Phone *" hint="Customer Phone"
-              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled v-model="formData.country" label="Customer Country *" hint="Customer Country" lazy-rules
-              :rules="[val => val && val.length > 0 || 'Please type something']" />
             <div>
               <q-btn label="Submit" type="submit" color="primary" />
               <q-btn label="Reset" type="reset" color="primary" flat class="q-ml-sm" />
@@ -309,21 +337,21 @@ function confirm(id) {
 
         <q-card-section>
           <q-form @submit="updateCustomer(id)" @reset="onReset" class="q-gutter-md">
-            <q-input filled v-model="formData.name" label="Customer Name *" hint="Customer Name" lazy-rules
+            <q-input filled v-model="updateCustomerFormData.name" label="Customer Name *" hint="Customer Name" lazy-rules
               :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="email" v-model="formData.email" label="Customer Email *" hint="Customer Email"
-              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="email" v-model="updateCustomerFormData.email" label="Customer Email *"
+              hint="Customer Email" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="textarea" v-model="formData.address" label="Customer Address *" hint="Customer Address"
+            <q-input filled type="textarea" v-model="updateCustomerFormData.address" label="Customer Address *"
+              hint="Customer Address" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="number" v-model="updateCustomerFormData.phone" label="Customer Phone *"
+              hint="Customer Phone" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled v-model="updateCustomerFormData.country" label="Customer Country *" hint="Customer Country"
               lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled type="number" v-model="formData.phone" label="Customer Phone *" hint="Customer Phone"
-              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled v-model="formData.country" label="Customer Country *" hint="Customer Country" lazy-rules
-              :rules="[val => val && val.length > 0 || 'Please type something']" />
             <div>
               <q-btn label="Submit" type="submit" color="primary" />
-              <q-btn label="Reset" type="reset" color="primary" flat class="q-ml-sm" />
+              <q-btn label="Cancel" color="negative" flat class="q-ml-sm" @click="updateCustomerForm = false" />
             </div>
           </q-form>
         </q-card-section>
