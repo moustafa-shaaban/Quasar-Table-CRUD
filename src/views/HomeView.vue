@@ -26,11 +26,7 @@ const columns = [
   { name: 'actions', label: 'Actions', align: 'left', }
 ]
 
-
-const customers = computed(() => {
-  return customersStore.customersData
-})
-const rows = customers.value;
+const rows = customersStore.customersData;
 
 
 function wrapCsvValue(val, formatFn, row) {
@@ -66,7 +62,7 @@ function exportTable() {
   ).join('\r\n')
 
   const status = exportFile(
-    'table-export.csv',
+    'data-export.csv',
     content,
     'text/csv'
   )
@@ -88,8 +84,8 @@ const pagination = ref({
   // rowsNumber: xx if getting data from a server
 })
 
-const createCustomerForm = ref(false);
-const updateCustomerForm = ref(false);
+const createCustomerDialog = ref(false);
+const updateCustomerDialog = ref(false);
 
 const addCustomerFormData = reactive({
   name: '',
@@ -99,7 +95,7 @@ const addCustomerFormData = reactive({
   county: '',
 })
 
-const updateCustomerFormData = reactive({
+const updateCustomerDialogData = reactive({
   name: '',
   email: '',
   address: '',
@@ -119,16 +115,16 @@ function createCustomer() {
     country: addCustomerFormData.country,
   })
 
-  onReset()
-  createCustomerForm.value = false
 
   Notify.create({
-    message: 'Customer Added Successfully',
+    message: `Customer ${addCustomerFormData.name} Added Successfully`,
     type: "positive",
     actions: [
       { icon: 'close', color: 'white', round: true, }
     ]
   })
+  createCustomerDialog.value = false
+  onReset()
 };
 
 function onReset() {
@@ -142,23 +138,23 @@ function onReset() {
 const testId = ref()
 
 function update(id) {
-  updateCustomerForm.value = true;
+  updateCustomerDialog.value = true;
   const customerToUpdate = JSON.parse(JSON.stringify(
     customersStore.customersData.find((item) => item.id === id)
   ))
   testId.value = customerToUpdate.id
-  updateCustomerFormData.name = customerToUpdate.name
-  updateCustomerFormData.email = customerToUpdate.email
-  updateCustomerFormData.address = customerToUpdate.address
-  updateCustomerFormData.phone = customerToUpdate.phone
-  updateCustomerFormData.country = customerToUpdate.country
+  updateCustomerDialogData.name = customerToUpdate.name
+  updateCustomerDialogData.email = customerToUpdate.email
+  updateCustomerDialogData.address = customerToUpdate.address
+  updateCustomerDialogData.phone = customerToUpdate.phone
+  updateCustomerDialogData.country = customerToUpdate.country
 }
 
 function updateCustomer() {
   try {
-    customersStore.updateCustomer(testId.value, updateCustomerFormData);
+    customersStore.updateCustomer(testId.value, updateCustomerDialogData);
     onReset();
-    updateCustomerForm.value = false;
+    updateCustomerDialog.value = false;
     Notify.create({
       message: 'Customer Updated Successfully',
       type: "positive",
@@ -218,7 +214,7 @@ function confirm(id) {
         no-data-label="No data found">
 
         <template v-slot:top-left="props">
-          <q-btn color="primary" label="Add Customer" @click="createCustomerForm = true" />
+          <q-btn color="primary" label="Add Customer" @click="createCustomerDialog = true" />
           <q-btn color="primary" icon-right="archive" label="Export to csv" no-caps @click="exportTable" />
           <q-btn flat round dense :icon="props.inFullscreen ? 'fullscreen_exit' : 'fullscreen'"
             @click="props.toggleFullscreen" class="q-ml-md" />
@@ -294,7 +290,7 @@ function confirm(id) {
       </q-table>
     </div>
 
-    <q-dialog v-model="createCustomerForm">
+    <q-dialog v-model="createCustomerDialog">
       <q-card flat bordered class="form-card">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Update Customer</div>
@@ -326,32 +322,32 @@ function confirm(id) {
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="updateCustomerForm">
+    <q-dialog v-model="updateCustomerDialog">
       <q-card flat bordered class="form-card">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Update Customer</div>
           <q-space />
-          <q-btn icon="close" flat round dense @click="updateCustomerForm = false" />
+          <q-btn icon="close" flat round dense @click="updateCustomerDialog = false" />
         </q-card-section>
 
 
         <q-card-section>
           <q-form @submit="updateCustomer(id)" @reset="onReset" class="q-gutter-md">
-            <q-input filled v-model="updateCustomerFormData.name" label="Customer Name *" hint="Customer Name" lazy-rules
-              :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled v-model="updateCustomerDialogData.name" label="Customer Name *" hint="Customer Name"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="email" v-model="updateCustomerFormData.email" label="Customer Email *"
+            <q-input filled type="email" v-model="updateCustomerDialogData.email" label="Customer Email *"
               hint="Customer Email" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="textarea" v-model="updateCustomerFormData.address" label="Customer Address *"
+            <q-input filled type="textarea" v-model="updateCustomerDialogData.address" label="Customer Address *"
               hint="Customer Address" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled type="number" v-model="updateCustomerFormData.phone" label="Customer Phone *"
+            <q-input filled type="number" v-model="updateCustomerDialogData.phone" label="Customer Phone *"
               hint="Customer Phone" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled v-model="updateCustomerFormData.country" label="Customer Country *" hint="Customer Country"
+            <q-input filled v-model="updateCustomerDialogData.country" label="Customer Country *" hint="Customer Country"
               lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
             <div>
               <q-btn label="Submit" type="submit" color="primary" />
-              <q-btn label="Cancel" color="negative" flat class="q-ml-sm" @click="updateCustomerForm = false" />
+              <q-btn label="Cancel" color="negative" flat class="q-ml-sm" @click="updateCustomerDialog = false" />
             </div>
           </q-form>
         </q-card-section>

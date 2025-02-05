@@ -19,7 +19,7 @@ export const useCustomersStore = defineStore("customers", {
   actions: {
     // Create
     createCustomer(customer) {
-      this.customersData.push(customer);
+      this.customersData.unshift(customer);
     },
 
     // Update
