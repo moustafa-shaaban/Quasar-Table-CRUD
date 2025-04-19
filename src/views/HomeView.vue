@@ -1,11 +1,94 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref } from 'vue';
 import { exportFile, Notify, Dialog, uid } from 'quasar';
 
 import { useCustomersStore } from '@/stores/customers';
 import { reactive } from 'vue';
 
 const customersStore = useCustomersStore();
+
+const showModal = ref(false)
+const isUpdating = ref(false)
+
+const formData = reactive({
+  name: '',
+  email: '',
+  address: '',
+  phone: '',
+  country: '',
+});
+
+const resetForm = () => {
+  //   formData.id = null
+  formData.name = ''
+  formData.email = ''
+  formData.address = ''
+  formData.phone = ''
+  formData.country = ''
+}
+
+const openAddModal = () => {
+  isUpdating.value = false
+  resetForm()
+  showModal.value = true
+}
+
+const openEditModal = (customer) => {
+  isUpdating.value = true
+  Object.assign(formData, customer)
+  showModal.value = true
+}
+
+const submitForm = () => {
+
+  if (isUpdating.value) {
+
+    customersStore.updateCustomer(formData);
+
+    Notify.create({
+      message: `Customer ${formData.name} Updated Successfully`,
+      type: "positive",
+      actions: [
+        { icon: 'close', color: 'white', round: true, }
+      ]
+    })
+
+  } else {
+
+    customersStore.createCustomer({ id: uid(), ...formData });
+
+    Notify.create({
+      message: `Customer ${formData.name} Created Successfully`,
+      type: "positive",
+      actions: [
+        { icon: 'close', color: 'white', round: true, }
+      ]
+    })
+
+  }
+
+  showModal.value = false;
+
+  resetForm()
+}
+
+const confirmDelete = (customer) => {
+  Dialog.create({
+    title: 'Confirm',
+    message: 'Are you sure you want to delete this customer?',
+    cancel: true,
+    persistent: true
+  }).onOk(() => {
+    customersStore.deleteCustomer(customer.id)
+    Notify.create({
+      message: `Customer ${customer.name} Deleted Successfully`,
+      type: "positive",
+      actions: [
+        { icon: 'close', color: 'white', round: true, }
+      ]
+    })
+  })
+}
 
 const filter = ref('');
 
@@ -84,137 +167,17 @@ const pagination = ref({
   // rowsNumber: xx if getting data from a server
 })
 
-const createCustomerDialog = ref(false);
-const updateCustomerDialog = ref(false);
-
-const addCustomerFormData = reactive({
-  name: '',
-  email: '',
-  address: '',
-  phone: '',
-  county: '',
-})
-
-const updateCustomerDialogData = reactive({
-  name: '',
-  email: '',
-  address: '',
-  phone: '',
-  county: '',
-})
-
-
-
-function createCustomer() {
-  customersStore.createCustomer({
-    id: uid(),
-    name: addCustomerFormData.name,
-    email: addCustomerFormData.email,
-    address: addCustomerFormData.address,
-    phone: addCustomerFormData.phone,
-    country: addCustomerFormData.country,
-  })
-
-
-  Notify.create({
-    message: `Customer ${addCustomerFormData.name} Added Successfully`,
-    type: "positive",
-    actions: [
-      { icon: 'close', color: 'white', round: true, }
-    ]
-  })
-  createCustomerDialog.value = false
-  onReset()
-};
-
-function onReset() {
-  addCustomerFormData.name = ''
-  addCustomerFormData.email = ''
-  addCustomerFormData.address = ''
-  addCustomerFormData.phone = ''
-  addCustomerFormData.country = ''
-}
-
-const testId = ref()
-
-function update(id) {
-  updateCustomerDialog.value = true;
-  const customerToUpdate = JSON.parse(JSON.stringify(
-    customersStore.customersData.find((item) => item.id === id)
-  ))
-  testId.value = customerToUpdate.id
-  updateCustomerDialogData.name = customerToUpdate.name
-  updateCustomerDialogData.email = customerToUpdate.email
-  updateCustomerDialogData.address = customerToUpdate.address
-  updateCustomerDialogData.phone = customerToUpdate.phone
-  updateCustomerDialogData.country = customerToUpdate.country
-}
-
-function updateCustomer() {
-  try {
-    customersStore.updateCustomer(testId.value, updateCustomerDialogData);
-    onReset();
-    updateCustomerDialog.value = false;
-    Notify.create({
-      message: 'Customer Updated Successfully',
-      type: "positive",
-      actions: [
-        { icon: 'close', color: 'white', round: true, }
-      ]
-    })
-  } catch (error) {
-    Notify.create({
-      message: error.message,
-      type: "negative",
-      actions: [
-        { icon: 'close', color: 'white', round: true, }
-      ]
-    })
-  }
-};
-
-function confirm(id) {
-  const customerToDelete = customersStore.customersData.find((item) => item.id === id)
-  Dialog.create({
-    dark: true,
-    title: 'Confirm',
-    color: 'primary',
-    message: `Are you sure you want to delete ${customerToDelete.name} ?`,
-    cancel: true,
-    persistent: true
-  }).onOk(() => {
-    try {
-      customersStore.deleteCustomer(id);
-      Notify.create({
-        message: `Customer ${customerToDelete.name} Deleted Successfully`,
-        type: "positive",
-        actions: [
-          { icon: 'close', color: 'white', round: true, }
-        ]
-      })
-    } catch (error) {
-      Notify.create({
-        message: error.message,
-        type: "negative",
-        actions: [
-          { icon: 'close', color: 'white', round: true, }
-        ]
-      })
-    }
-  })
-};
-
 </script>
 
 <template>
   <q-page>
     <div class="q-pa-md">
-      <q-table v-model:pagination="pagination" square :rows="rows" :columns="columns" row-key="id" rows-per-page="10" flat
-        bordered separator="cell" :grid="$q.screen.lt.md" :dense="$q.screen.lt.md" :filter="filter"
+      <q-table v-model:pagination="pagination" square :rows="rows" :columns="columns" row-key="id" rows-per-page="10"
+        flat bordered separator="cell" :grid="$q.screen.lt.md" :dense="$q.screen.lt.md" :filter="filter"
         no-data-label="No data found">
 
         <template v-slot:top-left="props">
-          <q-btn color="primary" label="Add Customer" @click="createCustomerDialog = true" />
+          <q-btn color="primary" label="Create Customer" @click="openAddModal" />
           <q-btn color="primary" icon-right="archive" label="Export to csv" no-caps @click="exportTable" />
           <q-btn flat round dense :icon="props.inFullscreen ? 'fullscreen_exit' : 'fullscreen'"
             @click="props.toggleFullscreen" class="q-ml-md" />
@@ -264,8 +227,8 @@ function confirm(id) {
             </q-td>
 
             <q-td key="actions" :props="props">
-              <q-btn round color="info" icon="edit" @click="update(props.row.id)" />
-              <q-btn round color="negative" icon="delete" @click="confirm(props.row.id)" />
+              <q-btn round color="info" icon="edit" @click="openEditModal(props.row)" />
+              <q-btn round color="negative" icon="delete" @click="confirmDelete(props.row)" />
             </q-td>
           </q-tr>
         </template>
@@ -290,64 +253,32 @@ function confirm(id) {
       </q-table>
     </div>
 
-    <q-dialog v-model="createCustomerDialog">
+    <q-dialog v-model="showModal" persistent>
       <q-card flat bordered class="form-card">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Update Customer</div>
+          <div class="text-h6">{{ isUpdating ? 'Update Customer' : 'Create Customer' }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
 
         <q-card-section>
-          <q-form @submit="createCustomer" @reset="onReset" class="q-gutter-md">
-            <q-input filled v-model="addCustomerFormData.name" label="Customer Name *" hint="Customer Name" lazy-rules
+          <q-form @submit="submitForm" @reset="resetForm" class="q-gutter-md">
+            <q-input filled v-model="formData.name" label="Customer Name *" hint="Customer Name" lazy-rules
               :rules="[val => val && val.length > 0 || 'Please type something']" />
 
-            <q-input filled type="email" v-model="addCustomerFormData.email" label="Customer Email *"
-              hint="Customer Email" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-
-            <q-input filled type="textarea" v-model="addCustomerFormData.address" label="Customer Address *"
-              hint="Customer Address" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled type="number" v-model="addCustomerFormData.phone" label="Customer Phone *"
-              hint="Customer Phone" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled v-model="addCustomerFormData.country" label="Customer Country *" hint="Customer Country"
+            <q-input filled type="email" v-model="formData.email" label="Customer Email *" hint="Customer Email"
               lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+
+            <q-input filled type="textarea" v-model="formData.address" label="Customer Address *"
+              hint="Customer Address" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled type="number" v-model="formData.phone" label="Customer Phone *" hint="Customer Phone"
+              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
+            <q-input filled v-model="formData.country" label="Customer Country *" hint="Customer Country" lazy-rules
+              :rules="[val => val && val.length > 0 || 'Please type something']" />
             <div>
               <q-btn label="Submit" type="submit" color="primary" />
               <q-btn label="Reset" type="reset" color="primary" flat class="q-ml-sm" />
-            </div>
-          </q-form>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="updateCustomerDialog">
-      <q-card flat bordered class="form-card">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Update Customer</div>
-          <q-space />
-          <q-btn icon="close" flat round dense @click="updateCustomerDialog = false" />
-        </q-card-section>
-
-
-        <q-card-section>
-          <q-form @submit="updateCustomer(id)" @reset="onReset" class="q-gutter-md">
-            <q-input filled v-model="updateCustomerDialogData.name" label="Customer Name *" hint="Customer Name"
-              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-
-            <q-input filled type="email" v-model="updateCustomerDialogData.email" label="Customer Email *"
-              hint="Customer Email" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-
-            <q-input filled type="textarea" v-model="updateCustomerDialogData.address" label="Customer Address *"
-              hint="Customer Address" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled type="number" v-model="updateCustomerDialogData.phone" label="Customer Phone *"
-              hint="Customer Phone" lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <q-input filled v-model="updateCustomerDialogData.country" label="Customer Country *" hint="Customer Country"
-              lazy-rules :rules="[val => val && val.length > 0 || 'Please type something']" />
-            <div>
-              <q-btn label="Submit" type="submit" color="primary" />
-              <q-btn label="Cancel" color="negative" flat class="q-ml-sm" @click="updateCustomerDialog = false" />
             </div>
           </q-form>
         </q-card-section>
